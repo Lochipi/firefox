@@ -1893,7 +1893,7 @@ bool ModuleBuilder::buildTables(frontend::StencilModuleMetadata& metadata) {
           }
         }
       }
-    } else if (exp.importNameValueType == ImportNameValueType::AllButDefault) {
+    } else if (exp.importNameValueType == ImportNameValueType::All) {
       MOZ_ASSERT(!exp.exportName);
       if (!metadata.starExportEntries.append(exp)) {
         js::ReportOutOfMemory(fc_);
