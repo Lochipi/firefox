@@ -45,6 +45,36 @@ class CodeGeneratorShared : public LElementVisitor {
   LIRGraph& graph;
   const wasm::CodeMetadata* wasmCodeMeta_;
   LBlock* current;
+
+  // The bailout emission is architecture-specific, so each backend
+  // provides bailoutFrom. The bailoutCmp*/bailoutTest* helpers
+  // below are shared.
+  void bailoutFrom(Label* label, LSnapshot* snapshot);
+
+  template <typename T1, typename T2>
+  void bailoutCmp32(Assembler::Condition c, T1 lhs, T2 rhs,
+                    LSnapshot* snapshot) {
+    Label bail;
+    masm.branch32(c, lhs, rhs, &bail);
+    bailoutFrom(&bail, snapshot);
+  }
+
+  template <typename T1, typename T2>
+  void bailoutTest32(Assembler::Condition c, T1 lhs, T2 rhs,
+                     LSnapshot* snapshot) {
+    Label bail;
+    masm.branchTest32(c, lhs, rhs, &bail);
+    bailoutFrom(&bail, snapshot);
+  }
+
+  template <typename T1, typename T2>
+  void bailoutCmpPtr(Assembler::Condition c, T1 lhs, T2 rhs,
+                     LSnapshot* snapshot) {
+    Label bail;
+    masm.branchPtr(c, lhs, rhs, &bail);
+    bailoutFrom(&bail, snapshot);
+  }
+
   SnapshotWriter snapshots_;
   RecoverWriter recovers_;
 #ifdef DEBUG
