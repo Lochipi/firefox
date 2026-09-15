@@ -223,6 +223,40 @@ bool CodeGeneratorShared::generateOutOfLineCode() {
   return !masm.oom();
 }
 
+void CodeGeneratorShared::bailoutFrom(Label* label, LSnapshot* snapshot) {
+  MOZ_ASSERT_IF(!masm.oom(), label->used());
+  MOZ_ASSERT_IF(!masm.oom(), !label->bound());
+
+  encode(snapshot);
+
+  InlineScriptTree* tree = snapshot->mir()->block()->trackedTree();
+  auto* ool = new (alloc()) LambdaOutOfLineCode([=, this](OutOfLineCode& ool) {
+#if defined(JS_CODEGEN_MIPS64) || defined(JS_CODEGEN_LOONG64) || \
+    defined(JS_CODEGEN_RISCV64)
+    // Push snapshotOffset and make sure stack is aligned.
+    masm.subPtr(Imm32(sizeof(Value)), StackPointer);
+    masm.storePtr(ImmWord(snapshot->snapshotOffset()),
+                  Address(StackPointer, 0));
+#else
+    masm.push(Imm32(snapshot->snapshotOffset()));
+#endif
+    masm.jump(&deoptLabel_);
+  });
+
+  // All bailout code is associated with the bytecodeSite of the block we are
+  // bailing out from.
+  addOutOfLineCode(ool,
+                   new (alloc()) BytecodeSite(tree, tree->script()->code()));
+
+  masm.retarget(label, ool->entry());
+}
+
+void CodeGeneratorShared::bailout(LSnapshot* snapshot) {
+  Label label;
+  masm.jump(&label);
+  bailoutFrom(&label, snapshot);
+}
+
 void CodeGeneratorShared::addOutOfLineCode(OutOfLineCode* code,
                                            const MInstruction* mir) {
   MOZ_ASSERT(mir);
