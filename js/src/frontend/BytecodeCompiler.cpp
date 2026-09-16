@@ -645,6 +645,8 @@ JSScript* frontend::CompileGlobalScriptWithExtraBindings(
 
       JS::CompileOptions copiedOptions(nullptr, options);
       copiedOptions.setNonSyntacticScope(false);
+      copiedOptions.setAllowRedeclaringExistingLexicalBinding(
+          options.allowRedeclaringExistingLexicalBinding);
 
       return CompileGlobalScript(cx, fc, copiedOptions, srcBuf,
                                  ScopeKind::Global);

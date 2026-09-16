@@ -64,12 +64,13 @@
 #include "vm/Scope.h"              // for PositionalFormalParameterIter
 #include "vm/Stack.h"              // for AbstractFramePtr, FrameIter
 #include "vm/StringType.h"         // for PropertyName, JSString
-#include "wasm/WasmContext.h"      // for Context
-#include "wasm/WasmDebug.h"        // for DebugState
-#include "wasm/WasmDebugFrame.h"   // for DebugFrame
-#include "wasm/WasmInstance.h"     // for Instance
-#include "wasm/WasmJS.h"           // for WasmInstanceObject
-#include "wasm/WasmStacks.h"       // for wasm::ContStack
+#include "vm/Watchtower.h"  // for Watchtower::watchGlobalLexicalRedeclaration
+#include "wasm/WasmContext.h"     // for Context
+#include "wasm/WasmDebug.h"       // for DebugState
+#include "wasm/WasmDebugFrame.h"  // for DebugFrame
+#include "wasm/WasmInstance.h"    // for Instance
+#include "wasm/WasmJS.h"          // for WasmInstanceObject
+#include "wasm/WasmStacks.h"      // for wasm::ContStack
 
 #include "debugger/Debugger-inl.h"  // for Debugger::fromJSObject
 #include "debugger/Frame-inl.h"
@@ -1113,6 +1114,9 @@ static bool EvaluateInEnv(
       break;
     }
     case EvalOptions::EnvKind::Global: {
+      options.setAllowRedeclaringExistingLexicalBinding(
+          evalOptions.allowRedeclaringExistingLexicalBinding());
+
       AutoReportFrontendContext fc(cx);
       script = frontend::CompileGlobalScript(cx, &fc, options, srcBuf,
                                              ScopeKind::Global);
@@ -1132,7 +1136,9 @@ static bool EvaluateInEnv(
 
       MOZ_ASSERT(envArg == &cx->global()->lexicalEnvironment());
 
-      options.setNonSyntacticScope(true);
+      options.setNonSyntacticScope(true)
+          .setAllowRedeclaringExistingLexicalBinding(
+              evalOptions.allowRedeclaringExistingLexicalBinding());
 
       AutoReportFrontendContext fc(cx);
       script = frontend::CompileGlobalScriptWithExtraBindings(
@@ -1158,6 +1164,15 @@ static bool EvaluateInEnv(
       }
       break;
     }
+  }
+
+  if (evalOptions.allowRedeclaringExistingLexicalBinding()) {
+    // Invalidate Ion scripts that baked in values from the global lexical
+    // environment. Redeclaration may change those values, and without
+    // this the JIT would keep using stale constants.
+    JS::Rooted<js::NativeObject*> globalLexical(
+        cx, &cx->global()->lexicalEnvironment());
+    Watchtower::watchGlobalLexicalRedeclaration(cx, globalLexical);
   }
 
   return ExecuteKernel(cx, script, env, frame, rval);
