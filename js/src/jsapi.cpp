@@ -2514,6 +2514,8 @@ void JS::TransitiveCompileOptions::copyPODTransitiveOptions(
   sourceIsLazy = rhs.sourceIsLazy;
   allowHTMLComments = rhs.allowHTMLComments;
   nonSyntacticScope = rhs.nonSyntacticScope;
+  allowRedeclaringExistingLexicalBinding =
+      rhs.allowRedeclaringExistingLexicalBinding;
 
   topLevelAwait = rhs.topLevelAwait;
 
