@@ -191,6 +191,12 @@ function evalWithDebugger(string, options = {}, webConsole) {
 
   const evalOptions = {};
 
+  // Frame evaluation runs in the function's own lexical scope, not the
+  // global lexical environment, so REPL redeclaration semantics don't apply.
+  if (!frame) {
+    evalOptions.allowRedeclaringExistingLexicalBinding = true;
+  }
+
   const urlOption =
     options.url || (options.eager ? "debugger eager eval code" : null);
   if (typeof urlOption === "string") {

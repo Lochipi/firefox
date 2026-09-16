@@ -427,6 +427,7 @@ class MOZ_RAII EvalOptions {
   bool hideFromDebugger_ = false;
   bool bypassCSP_ = false;
   EnvKind kind_;
+  bool allowRedeclaringExistingLexicalBinding_ = false;
 
  public:
   explicit EvalOptions(EnvKind kind) : kind_(kind) {};
@@ -440,10 +441,18 @@ class MOZ_RAII EvalOptions {
     MOZ_ASSERT(kind_ == EvalOptions::EnvKind::GlobalWithExtraOuterBindings);
     kind_ = EvalOptions::EnvKind::GlobalWithExtraInnerBindings;
   }
+
+  void setAllowRedeclaringExistingLexicalBinding(bool allow) {
+    allowRedeclaringExistingLexicalBinding_ = allow;
+  }
+
   [[nodiscard]] bool setFilename(JSContext* cx, const char* filename);
   void setLineno(unsigned lineno) { lineno_ = lineno; }
   void setHideFromDebugger(bool hide) { hideFromDebugger_ = hide; }
   void setBypassCSP(bool bypass) { bypassCSP_ = bypass; }
+  bool allowRedeclaringExistingLexicalBinding() const {
+    return allowRedeclaringExistingLexicalBinding_;
+  }
 };
 
 /*

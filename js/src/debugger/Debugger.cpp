@@ -388,6 +388,13 @@ bool js::ParseEvalOptions(JSContext* cx, HandleValue value,
     options.setLineno(lineno);
   }
 
+  if (!JS_GetProperty(cx, opts, "allowRedeclaringExistingLexicalBinding", &v)) {
+    return false;
+  }
+  if (v.isBoolean()) {
+    options.setAllowRedeclaringExistingLexicalBinding(v.toBoolean());
+  }
+
   if (!JS_GetProperty(cx, opts, "hideFromDebugger", &v)) {
     return false;
   }

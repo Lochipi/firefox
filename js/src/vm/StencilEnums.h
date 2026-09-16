@@ -252,6 +252,10 @@ enum class ImmutableScriptFlagsEnum : uint32_t {
   // Whether this is a self-hosted function that uses the ArgumentsLength or
   // GetArgument intrinsic.
   UsesArgumentsIntrinsics = 1 << 30,
+
+  // Allow redeclaring lexical bindings.
+  // This flag can be used when evaluating scripts in REPL.
+  AllowRedeclaringExistingLexicalBinding = 1u << 31,
 };
 
 enum class MutableScriptFlagsEnum : uint32_t {
