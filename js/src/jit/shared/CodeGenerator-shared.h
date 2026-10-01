@@ -397,6 +397,10 @@ class CodeGeneratorShared : public LElementVisitor {
   void addOutOfLineCode(OutOfLineCode* code, const BytecodeSite* site);
   bool generateOutOfLineCode();
 
+  // Pushes the snapshot offset and jumps to deoptLabel_.
+  void emitBailoutOOL(LSnapshot* snapshot);
+
+  void bailoutIf(Assembler::Condition condition, LSnapshot* snapshot);
   void bailoutFrom(Label* label, LSnapshot* snapshot);
   void bailout(LSnapshot* snapshot);
 

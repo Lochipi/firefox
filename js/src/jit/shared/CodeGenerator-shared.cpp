@@ -225,6 +225,27 @@ bool CodeGeneratorShared::generateOutOfLineCode() {
   return !masm.oom();
 }
 
+void CodeGeneratorShared::emitBailoutOOL(LSnapshot* snapshot) {
+  masm.push(Imm32(snapshot->snapshotOffset()));
+  masm.jump(&deoptLabel_);
+}
+
+void CodeGeneratorShared::bailoutIf(Assembler::Condition condition,
+                                    LSnapshot* snapshot) {
+  encode(snapshot);
+
+  InlineScriptTree* tree = snapshot->mir()->block()->trackedTree();
+  auto* ool = new (alloc()) LambdaOutOfLineCode(
+      [=, this](OutOfLineCode& ool) { emitBailoutOOL(snapshot); });
+
+  // All bailout code is associated with the bytecodeSite of the block we are
+  // bailing out from.
+  addOutOfLineCode(ool,
+                   new (alloc()) BytecodeSite(tree, tree->script()->code()));
+
+  masm.j(condition, ool->entry());
+}
+
 void CodeGeneratorShared::bailoutFrom(Label* label, LSnapshot* snapshot) {
   MOZ_ASSERT_IF(!masm.oom(), label->used());
   MOZ_ASSERT_IF(!masm.oom(), !label->bound());
@@ -232,10 +253,8 @@ void CodeGeneratorShared::bailoutFrom(Label* label, LSnapshot* snapshot) {
   encode(snapshot);
 
   InlineScriptTree* tree = snapshot->mir()->block()->trackedTree();
-  auto* ool = new (alloc()) LambdaOutOfLineCode([=, this](OutOfLineCode& ool) {
-    masm.push(Imm32(snapshot->snapshotOffset()));
-    masm.jump(&deoptLabel_);
-  });
+  auto* ool = new (alloc()) LambdaOutOfLineCode(
+      [=, this](OutOfLineCode& ool) { emitBailoutOOL(snapshot); });
 
   // All bailout code is associated with the bytecodeSite of the block we are
   // bailing out from.
