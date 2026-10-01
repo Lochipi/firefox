@@ -132,6 +132,7 @@ function evalWithDebugger(string, options = {}, webConsole) {
   }
 
   const { frame, dbg } = getFrameDbg(options, webConsole);
+  dump(`evalWithDebugger: frame=${!!frame}\n`);
 
   const { dbgGlobal, bindSelf } = getDbgGlobal(options, dbg, webConsole);
 
@@ -656,6 +657,7 @@ function getEvalInput(string) {
 }
 
 function getFrameDbg(options, webConsole) {
+  dump(`getFrameDbg: frameActor=${options.frameActor}\n`);
   if (!options.frameActor) {
     return { frame: null, dbg: webConsole.dbg };
   }
