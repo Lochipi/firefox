@@ -39,7 +39,29 @@ describe("mapExpression", () => {
     {
       name: "await",
       expression: "await a()",
-      newExpression: formatAwait("return a()"),
+      newExpression: formatAwait(`
+        return {
+          value: await a()
+        };
+      `),
+      bindings: [],
+      mappings: {},
+      shouldMapBindings: true,
+      expectedMapped: {
+        await: true,
+        bindings: false,
+        originalExpression: false,
+      },
+    },
+    {
+      name: "await (result is a promise, bug 1918327)",
+      expression: "await 1; fetch(url)",
+      newExpression: formatAwait(`
+        await 1;
+        return {
+          value: fetch(url),
+        };
+      `),
       bindings: [],
       mappings: {},
       shouldMapBindings: true,
@@ -55,7 +77,9 @@ describe("mapExpression", () => {
       newExpression: `let x;
         (async () => {
           x = await a();
-          return x + x;
+          return {
+            value: x + x,
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -85,7 +109,9 @@ describe("mapExpression", () => {
       newExpression: `let x;
         (async () => {
           x = await a();
-          return b(x);
+          return {
+            value: await b(x),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -101,7 +127,9 @@ describe("mapExpression", () => {
       expression: "let x = await sleep(100, 2)",
       newExpression: `let x;
         (async () => {
-          return (x = await sleep(100, 2));
+          return {
+            value: (x = await sleep(100, 2)),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -117,7 +145,9 @@ describe("mapExpression", () => {
       expression: "const { a, c: y } = await b()",
       newExpression: `let a, y;
         (async () => {
-          return ({ a, c: y } = await b());
+          return {
+            value: ({ a, c: y } = await b()),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -133,7 +163,9 @@ describe("mapExpression", () => {
       expression: "const [a, y] = await b();",
       newExpression: `let a, y;
         (async () => {
-          return ([a, y] = await b());
+          return {
+            value: ([a, y] = await b()),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -149,7 +181,9 @@ describe("mapExpression", () => {
       expression: "const [{ a }] = await b();",
       newExpression: `let a;
         (async () => {
-          return ([{ a }] = await b());
+          return {
+            value: ([{ a }] = await b()),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -166,7 +200,9 @@ describe("mapExpression", () => {
       newExpression: `let a, y, x;
         (async () => {
           ({ a, c: y } = await b());
-          return ({ x } = await y());
+          return {
+            value: ({ x } = await y()),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -182,7 +218,9 @@ describe("mapExpression", () => {
       expression: "const { a, c: y } = await b();",
       newExpression: `let a, y;
         (async () => {
-          return ({ a, c: y } = await b());
+          return {
+            value: ({ a, c: y } = await b()),
+          };
         })();`,
       bindings: ["a", "y"],
       mappings: {},
@@ -198,7 +236,9 @@ describe("mapExpression", () => {
       expression: "const [a, y] = await b();",
       newExpression: `let a, y;
         (async () => {
-          return ([a, y] = await b());
+          return {
+            value: ([a, y] = await b()),
+          };
         })();`,
       bindings: ["a", "y"],
       mappings: {},
@@ -214,7 +254,9 @@ describe("mapExpression", () => {
       expression: "const [{ a }] = await b();",
       newExpression: `let a;
         (async () => {
-          return ([{ a }] = await b());
+          return {
+            value: ([{ a }] = await b()),
+          };
         })();`,
       bindings: ["a"],
       mappings: {},
@@ -230,7 +272,9 @@ describe("mapExpression", () => {
       expression: "const { c, a = 5 } = await b();",
       newExpression: `let c, a;
         (async () => {
-          return ({ c, a = 5 } = await b());
+          return {
+            value: ({ c, a = 5 } = await b()),
+          };
         })();`,
       bindings: ["a", "y"],
       mappings: {},
@@ -246,7 +290,9 @@ describe("mapExpression", () => {
       expression: "const [a, y = 10] = await b();",
       newExpression: `let a, y;
         (async () => {
-          return ([a, y = 10] = await b());
+          return {
+            value: ([a, y = 10] = await b()),
+          };
         })();`,
       bindings: ["a", "y"],
       mappings: {},
@@ -262,7 +308,9 @@ describe("mapExpression", () => {
       expression: "const [{ c = 5 }, a = 5] = await b();",
       newExpression: `let c, a;
         (async () => {
-          return ([{ c = 5 }, a = 5] = await b());
+          return {
+            value: ([{ c = 5 }, a = 5] = await b()),
+          };
         })();`,
       bindings: ["a"],
       mappings: {},
@@ -278,10 +326,12 @@ describe("mapExpression", () => {
       expression: "const { a, c: { y } } = await b();",
       newExpression: `let a, y;
         (async () => {
-          return ({
-            a,
-            c: { y },
-          } = await b());
+          return {
+            value: ({
+              a,
+              c: { y },
+            } = await b()),
+          };
         })();`,
       bindings: ["a", "y"],
       mappings: {},
@@ -297,7 +347,9 @@ describe("mapExpression", () => {
       expression: "const { a, c: { y = 5 } = {} } = await b();",
       newExpression: `let a, y;
         (async () => {
-          return ({ a, c: { y = 5 } = {} } = await b());
+          return {
+            value: ({ a, c: { y = 5 } = {} } = await b()),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -314,14 +366,16 @@ describe("mapExpression", () => {
         "const { a, c: { y: { z = 10, b } = { b: 5 } } } = await b();",
       newExpression: `let a, z, b;
         (async () => {
-          return ({
-            a,
-            c: {
-              y: { z = 10, b } = {
-                b: 5,
+          return {
+            value: ({
+              a,
+              c: {
+                y: { z = 10, b } = {
+                  b: 5,
+                },
               },
-            },
-          } = await b());
+            } = await b()),
+          };
         })();`,
       bindings: [],
       mappings: {},
@@ -351,7 +405,8 @@ describe("mapExpression", () => {
       expression: "let a = await 123;",
       newExpression: `let a;
         (async () => {
-          return a = await 123;
+          return {
+            value: a = await 123 };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -365,7 +420,8 @@ describe("mapExpression", () => {
       expression: "var a = await 123;",
       newExpression: `var a;
         (async () => {
-          return a = await 123;
+          return {
+            value: a = await 123 };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -379,7 +435,8 @@ describe("mapExpression", () => {
       expression: "const a = await 123;",
       newExpression: `let a;
         (async () => {
-          return a = await 123;
+          return {
+            value: a = await 123 };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -396,7 +453,8 @@ describe("mapExpression", () => {
           a = 1;
           c = 3;
           b = await 123;
-          return a + b + c;
+          return {
+            value: a + b + c };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -410,7 +468,8 @@ describe("mapExpression", () => {
       expression: "let {a, b, c} = await x;",
       newExpression: `let a, b, c;
         (async () => {
-          return ({a, b, c} = await x);
+          return {
+            value: ({a, b, c} = await x) };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -424,7 +483,8 @@ describe("mapExpression", () => {
       expression: "let {a, ...rest} = await x;",
       newExpression: `let a, rest;
         (async () => {
-          return ({a, ...rest} = await x);
+          return {
+            value: ({a, ...rest} = await x) };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -438,7 +498,8 @@ describe("mapExpression", () => {
       expression: "let {a: hello, b, c: world, d: $ = 4} = await x;",
       newExpression: `let hello, b, world, $;
         (async () => {
-          return ({a: hello, b, c: world, d: $ = 4} = await x);
+          return {
+            value: ({a: hello, b, c: world, d: $ = 4} = await x) };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -455,7 +516,8 @@ describe("mapExpression", () => {
       newExpression: `let hello, z, bill, e, f;
         (async () => {
           ({ a: hello, c: { y: { z = 10, b: bill, d: [e, f = 20] }}} = await x);
-          return z;
+          return {
+            value: z };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -470,7 +532,8 @@ describe("mapExpression", () => {
       newExpression: `let a, b, c;
         (async () => {
           [a, b, c] = await x;
-          return c;
+          return {
+            value: c };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -485,7 +548,8 @@ describe("mapExpression", () => {
       newExpression: `let a, b, c;
         (async () => {
           [a, b = 1, c = 2] = await x;
-          return c;
+          return {
+            value: c };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -500,7 +564,8 @@ describe("mapExpression", () => {
       newExpression: `let a, b, c, rest;
         (async () => {
           [a, b = 1, c = 2, ...rest] = await x;
-          return rest;
+          return {
+            value: rest };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -515,7 +580,8 @@ describe("mapExpression", () => {
       newExpression: `let a, b, c, d, e;
         (async () => {
           [a, b = 1, [c = 2, [d = 3, e = 4]]] = await x;
-          return c;
+          return {
+            value: c };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -532,7 +598,8 @@ describe("mapExpression", () => {
       newExpression: `var rainbowLog;
         (async () => {
           ({rainbowLog} = await import("./cool-module.js"));
-          return rainbowLog("dynamic");
+          return {
+            value: rainbowLog("dynamic") };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -546,7 +613,8 @@ describe("mapExpression", () => {
       expression: "await x; true ?? false",
       newExpression: `(async () => {
           await x;
-          return true ?? false;
+          return {
+            value: true ?? false };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -560,7 +628,8 @@ describe("mapExpression", () => {
       expression: "await x; x?.y?.z",
       newExpression: `(async () => {
           await x;
-          return x?.y?.z;
+          return {
+            value: x?.y?.z };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -599,7 +668,8 @@ describe("mapExpression", () => {
       newExpression: `var b;
         (async () => {
           for (let i=0;i<2;i++) {}
-          return (b = await 1);
+          return {
+            value: (b = await 1) };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -615,7 +685,8 @@ describe("mapExpression", () => {
       newExpression: `var b;
         (async () => {
           for (let i in {}) {}
-          return (b = await 1);
+          return {
+            value: (b = await 1) };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {
@@ -631,7 +702,8 @@ describe("mapExpression", () => {
       newExpression: `var b;
         (async () => {
           for (let i of []) {}
-          return (b = await 1);
+          return {
+            value: (b = await 1) };
         })()`,
       shouldMapBindings: false,
       expectedMapped: {

@@ -81,4 +81,38 @@ add_task(async function () {
     await obj`,
     `Object { called: 1, then: Getter }`
   );
+
+  info(
+    "Check that a promise returned by an expression is not implicitly awaited"
+  );
+  message = await executeAndWaitForResultMessage(
+    hud,
+    `await 0; Promise.resolve(2)`,
+    `Promise {`
+  );
+  ok(
+    message,
+    "A fulfilled promise is displayed as a promise, not as its value"
+  );
+
+  message = await executeAndWaitForResultMessage(
+    hud,
+    `await 0; new Promise(() => {})`,
+    `Promise {`
+  );
+  ok(message, "A pending promise is displayed as a promise and doesn't hang");
+
+  message = await executeAndWaitForResultMessage(hud, `$_`, `Promise {`);
+  ok(message, "$_ is the promise as well");
+
+  info("Check that a thenable result is not unwrapped");
+  message = await executeAndWaitForResultMessage(
+    hud,
+    `await 0; ({ then(resolve) { resolve("thenable-resolved"); } })`,
+    `Object { then: then(resolve) }`
+  );
+  ok(
+    message,
+    "A thenable is displayed as an object, not as its resolved value"
+  );
 });

@@ -812,6 +812,28 @@ class WebConsoleActor extends Actor {
   }
 
   /**
+   * The code mapped for top-level await returns its last expression wrapped in a
+   * `{ value }` object, so a promise or thenable result isn't implicitly awaited by the
+   * async function (See Bug 1918327). This extracts the debuggee value from it.
+   *
+   * @private
+   * @param object result
+   *         The raw value the mapped async function resolved with.
+   * @return any
+   *         The debuggee value of the wrapped result, or undefined if there is none.
+   */
+  _unwrapAwaitResult(result) {
+    // `createValueGrip` expect a debuggee value, while here we have the raw object.
+    // We need to call `makeDebuggeeValue` on it to converts a standard JavaScript value 
+    // into a secure, wrapped format that the debugger can safely interact with.
+    const dbgWrapper = this.makeDebuggeeValue(result);
+    if (!dbgWrapper || typeof dbgWrapper !== "object") {
+      return undefined;
+    }
+    return dbgWrapper.getOwnPropertyDescriptor("value")?.value;
+  }
+
+  /**
    * In order to support async evaluations (e.g. top-level await, …),
    * we have to be able to handle promises. This method handles waiting for the promise,
    * and then returns the result.
@@ -834,9 +856,7 @@ class WebConsoleActor extends Actor {
     try {
       result = await response.awaitResult;
 
-      // `createValueGrip` expect a debuggee value, while here we have the raw object.
-      // We need to call `makeDebuggeeValue` on it to make it work.
-      const dbgResult = this.makeDebuggeeValue(result);
+      const dbgResult = this._unwrapAwaitResult(result);
       response.result = this.createValueGrip(dbgResult);
     } catch (e) {
       // The promise was rejected. We let the engine handle this as it will report a
@@ -1084,7 +1104,7 @@ class WebConsoleActor extends Actor {
         // it will keep its previous value.
 
         const p = awaitResult.then(res => {
-          this._lastConsoleInputEvaluation = this.makeDebuggeeValue(res);
+          this._lastConsoleInputEvaluation = this._unwrapAwaitResult(res);
         });
 
         // If the top level await was already rejected (e.g. `await Promise.reject("bleh")`),

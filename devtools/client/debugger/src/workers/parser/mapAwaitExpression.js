@@ -25,29 +25,33 @@ function translateDeclarationIntoAssignment(node) {
 }
 
 /**
- * Given an AST, modify it to return the last evaluated statement's expression value if possible.
+ * Given an AST, modify it to return the last evaluated statement's expression value
+ * wrapped in a `{ value }` object if possible.
  * This is to preserve existing console behavior of displaying the last executed expression value.
  */
 function addReturnNode(ast) {
   const statements = ast.program.body;
   const lastStatement = statements.pop();
 
-  // if the last expression is an awaitExpression, strip the `await` part and directly
-  // return the argument to avoid calling the argument's `then` function twice when the
-  // mapped expression gets evaluated (See Bug 1771428)
-  if (t.isAwaitExpression(lastStatement.expression)) {
-    lastStatement.expression = lastStatement.expression.argument;
-  }
-
   // NOTE: For more complicated cases such as an if/for statement, the last evaluated
   // expression value probably can not be displayed, unless doing hacky workarounds such
   // as returning the `eval` of the final statement (won't always work due to CSP issues?)
   // or SpiderMonkey support (See Bug 1839588) at which point this entire module can be removed.
-  statements.push(
-    t.isExpressionStatement(lastStatement)
-      ? t.returnStatement(lastStatement.expression)
-      : lastStatement
-  );
+  if (t.isExpressionStatement(lastStatement)) {
+    // Wrap the value in an object so the async function doesn't implicitly await it
+    // if it evaluates to a promise or a thenable (See Bug 1918327). There's actually no need to
+    // strip a trailing `await` to avoid calling `then` twice (See Bug 1771428) since this
+    // isn't returned directly anymore.
+    statements.push(
+      t.returnStatement(
+        t.objectExpression([
+          t.objectProperty(t.identifier("value"), lastStatement.expression),
+        ])
+      )
+    );
+  } else {
+    statements.push(lastStatement);
+  }
   return statements;
 }
 
